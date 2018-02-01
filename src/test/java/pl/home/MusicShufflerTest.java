@@ -1,31 +1,45 @@
 package pl.home;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+@RunWith(Parameterized.class)
 public class MusicShufflerTest {
 
     private Pattern pattern = Pattern.compile("^([0-9]+\\.)+");
     private List<String> fileNames;
     private int fileCount;
 
+    @Parameterized.Parameters // Just to be sure that file names aren't mixed-up
+    public static List<Object[]> data() {
+        return Arrays.asList(new Object[100][0]);
+    }
+
     @Before
     public void setUp() throws Exception {
         fileNames = getFileNames();
         fileCount = getFileCount();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        MusicShuffler.cleaned = new LinkedList<>();
+        MusicShuffler.dirtyFileNames = new ArrayDeque<>();
+        MusicShuffler.shuffle = new Stack<>();
     }
 
     @Test
@@ -43,7 +57,45 @@ public class MusicShufflerTest {
 
         Map<String, Long> newFilesLength = getFilesLength();
 
-        oldFilesLength.forEach((key, value) -> assertEquals(value, newFilesLength.get(key)));
+        oldFilesLength.forEach((key, value) -> {
+            System.out.println(key);
+            assertEquals(value, newFilesLength.get(key));
+        });
+    }
+
+    @Test
+    public void shouldAddRandomShufflePrefixToFileName() {
+        MusicShuffler.main(new String[]{"E:\\Music"});
+
+        List<String> newFileNames = getFileNames();
+        newFileNames.removeAll(fileNames); // remove file names with the same shuffle number
+
+        boolean areFilesShuffledByPrefix = false;
+        for (String fileName : newFileNames) {
+            areFilesShuffledByPrefix = pattern.matcher(fileName).find();
+        }
+
+        assertTrue(areFilesShuffledByPrefix);
+    }
+
+    @Test
+    public void filesShouldBeRenamed() {
+        Map<String, Long> oldModificationTimes = getFilesModificationTime();
+
+        MusicShuffler.main(new String[]{"E:\\Music"});
+
+        Map<String, Long> newModificationTimes = getFilesModificationTime();
+
+        List<String> newFileNames = getFileNames();
+        newFileNames.retainAll(fileNames);
+
+        newFileNames.forEach(fileName -> {
+                    String nameWithoutPrefix = stripPrefix(fileName);
+                    long oldFileModTime = oldModificationTimes.get(nameWithoutPrefix);
+                    long newFileModTime = newModificationTimes.get(nameWithoutPrefix);
+                    assertTrue(oldFileModTime < newFileModTime);
+                }
+        );
     }
 
     private List<String> getFileNames() {
@@ -72,6 +124,20 @@ public class MusicShufflerTest {
         }
 
         return filesLength;
+    }
+
+    private Map<String, Long> getFilesModificationTime() {
+        Map<String, Long> filesModificationTime = new HashMap<>();
+        try {
+            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get("E:\\Music"),
+                    (data -> !data.toFile().isDirectory()));
+            for (Path path : directoryStream) {
+                filesModificationTime.put(stripPrefix(path.getFileName().toString()), path.toFile().lastModified());
+            }
+        } catch (IOException ignored) {
+        }
+
+        return filesModificationTime;
     }
 
     private int getFileCount() {
