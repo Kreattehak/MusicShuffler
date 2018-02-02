@@ -7,12 +7,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -20,13 +18,15 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class MusicShufflerTest {
 
+    private Path pathToTestFolder = Paths.get("src/test/resources/Music/");
+    private String[] locationOfTestFolder = new String[]{pathToTestFolder.toAbsolutePath().toString()};
     private Pattern pattern = Pattern.compile("^([0-9]+\\.)+");
     private List<String> fileNames;
     private int fileCount;
 
     @Parameterized.Parameters // Just to be sure that file names aren't mixed-up
     public static List<Object[]> data() {
-        return Arrays.asList(new Object[100][0]);
+        return Arrays.asList(new Object[50][0]);
     }
 
     @Before
@@ -44,7 +44,7 @@ public class MusicShufflerTest {
 
     @Test
     public void shouldNotChangeTheCountOfFiles() {
-        MusicShuffler.main(new String[]{"E:\\Music"});
+        MusicShuffler.main(locationOfTestFolder);
 
         assertEquals(fileCount, getFileNames().size());
     }
@@ -53,7 +53,7 @@ public class MusicShufflerTest {
     public void fileShouldNotBeRenamedWithOtherFileName() {
         Map<String, Long> oldFilesLength = getFilesLength();
 
-        MusicShuffler.main(new String[]{"E:\\Music"});
+        MusicShuffler.main(locationOfTestFolder);
 
         Map<String, Long> newFilesLength = getFilesLength();
 
@@ -65,7 +65,7 @@ public class MusicShufflerTest {
 
     @Test
     public void shouldAddRandomShufflePrefixToFileName() {
-        MusicShuffler.main(new String[]{"E:\\Music"});
+        MusicShuffler.main(locationOfTestFolder);
 
         List<String> newFileNames = getFileNames();
         newFileNames.removeAll(fileNames); // remove file names with the same shuffle number
@@ -82,7 +82,7 @@ public class MusicShufflerTest {
     public void filesShouldBeRenamed() {
         Map<String, Long> oldModificationTimes = getFilesModificationTime();
 
-        MusicShuffler.main(new String[]{"E:\\Music"});
+        MusicShuffler.main(locationOfTestFolder);
 
         Map<String, Long> newModificationTimes = getFilesModificationTime();
 
@@ -101,7 +101,7 @@ public class MusicShufflerTest {
     private List<String> getFileNames() {
         List<String> fileNames = new ArrayList<>();
         try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get("E:\\Music"),
+            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(pathToTestFolder,
                     (data -> !data.toFile().isDirectory()));
             for (Path path : directoryStream) {
                 fileNames.add(path.getFileName().toString());
@@ -115,7 +115,7 @@ public class MusicShufflerTest {
     private Map<String, Long> getFilesLength() {
         Map<String, Long> filesLength = new HashMap<>();
         try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get("E:\\Music"),
+            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(pathToTestFolder,
                     (data -> !data.toFile().isDirectory()));
             for (Path path : directoryStream) {
                 filesLength.put(stripPrefix(path.getFileName().toString()), path.toFile().length());
@@ -129,7 +129,7 @@ public class MusicShufflerTest {
     private Map<String, Long> getFilesModificationTime() {
         Map<String, Long> filesModificationTime = new HashMap<>();
         try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get("E:\\Music"),
+            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(pathToTestFolder,
                     (data -> !data.toFile().isDirectory()));
             for (Path path : directoryStream) {
                 filesModificationTime.put(stripPrefix(path.getFileName().toString()), path.toFile().lastModified());
@@ -139,6 +139,14 @@ public class MusicShufflerTest {
 
         return filesModificationTime;
     }
+
+    private List<String> getFileNamesForFilesInSubfolder(Path pathToSubFolder) throws IOException {
+        return Files.walk(pathToSubFolder, 1)
+                .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                .map(path -> path.getFileName().toString())
+                .collect(Collectors.toList());
+    }
+
 
     private int getFileCount() {
         return fileNames.size();
