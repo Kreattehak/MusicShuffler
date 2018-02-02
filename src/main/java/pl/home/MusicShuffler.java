@@ -31,8 +31,6 @@ public class MusicShuffler {
         initializeShuffle(cleaned.size());
 
         cleaned.forEach(fileName -> {
-            System.out.println(dirtyFileNames.size());
-            System.out.println(cleaned.size());
             String newFileName = folderWithMusic.toString() + "\\" + shuffle.pop() + "." + fileName;
             File file = dirtyFileNames.poll().toFile();
             file.setLastModified(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
