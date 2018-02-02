@@ -9,6 +9,7 @@ import org.junit.runners.Parameterized;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -110,15 +111,14 @@ public class MusicShufflerTest {
             subFolderFileNames.removeAll(newSubFolderFileNames);
             assertEquals(subFolderFileNames.size(), 0);
         } catch (IOException e) {
-            e.printStackTrace();
+            assertTrue("IOException occurred!", false);
         }
     }
 
     private List<String> getFileNames() {
         List<String> fileNames = new ArrayList<>();
         try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(pathToTestFolder,
-                    (data -> !data.toFile().isDirectory()));
+            DirectoryStream<Path> directoryStream = getAllPathsThatLeadToFile();
             for (Path path : directoryStream) {
                 fileNames.add(path.getFileName().toString());
             }
@@ -129,31 +129,24 @@ public class MusicShufflerTest {
     }
 
     private Map<String, Long> getFilesLength() {
-        Map<String, Long> filesLength = new HashMap<>();
-        try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(pathToTestFolder,
-                    (data -> !data.toFile().isDirectory()));
-            for (Path path : directoryStream) {
-                filesLength.put(stripPrefix(path.getFileName().toString()), path.toFile().length());
-            }
-        } catch (IOException ignored) {
-        }
-
-        return filesLength;
+        return getFilesAttributes(path -> stripPrefix(path.toString()), path -> path.toFile().length());
     }
 
     private Map<String, Long> getFilesModificationTime() {
-        Map<String, Long> filesModificationTime = new HashMap<>();
+        return getFilesAttributes(path -> stripPrefix(path.toString()), path -> path.toFile().lastModified());
+    }
+
+    private Map<String, Long> getFilesAttributes(Function<Path, String> fileName, Function<Path, Long> fileAttributes) {
+        Map<String, Long> filesWithAttributes = new HashMap<>();
         try {
-            DirectoryStream<Path> directoryStream = Files.newDirectoryStream(pathToTestFolder,
-                    (data -> !data.toFile().isDirectory()));
+            DirectoryStream<Path> directoryStream = getAllPathsThatLeadToFile();
             for (Path path : directoryStream) {
-                filesModificationTime.put(stripPrefix(path.getFileName().toString()), path.toFile().lastModified());
+                filesWithAttributes.put(fileName.apply(path.getFileName()), fileAttributes.apply(path));
             }
         } catch (IOException ignored) {
         }
 
-        return filesModificationTime;
+        return filesWithAttributes;
     }
 
     private List<String> getFileNamesForFilesInSubfolder(Path pathToSubFolder) throws IOException {
@@ -161,6 +154,10 @@ public class MusicShufflerTest {
                 .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                 .map(path -> path.getFileName().toString())
                 .collect(Collectors.toList());
+    }
+
+    private DirectoryStream<Path> getAllPathsThatLeadToFile() throws IOException {
+        return Files.newDirectoryStream(pathToTestFolder, (data -> !data.toFile().isDirectory()));
     }
 
     private int getFileCount() {
