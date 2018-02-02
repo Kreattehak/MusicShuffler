@@ -98,6 +98,22 @@ public class MusicShufflerTest {
         );
     }
 
+    @Test
+    public void shouldNotShuffleMusicInSubfolder() {
+        Path pathToSubFolder = pathToTestFolder.resolve("some subfolder");
+        try {
+            List<String> subFolderFileNames = getFileNamesForFilesInSubfolder(pathToSubFolder);
+
+            MusicShuffler.main(locationOfTestFolder);
+
+            List<String> newSubFolderFileNames = getFileNamesForFilesInSubfolder(pathToSubFolder);
+            subFolderFileNames.removeAll(newSubFolderFileNames);
+            assertEquals(subFolderFileNames.size(), 0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private List<String> getFileNames() {
         List<String> fileNames = new ArrayList<>();
         try {
@@ -146,7 +162,6 @@ public class MusicShufflerTest {
                 .map(path -> path.getFileName().toString())
                 .collect(Collectors.toList());
     }
-
 
     private int getFileCount() {
         return fileNames.size();
