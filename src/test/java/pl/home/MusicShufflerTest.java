@@ -38,8 +38,8 @@ public class MusicShufflerTest {
 
     @After
     public void tearDown() throws Exception {
-        MusicShuffler.cleaned = new LinkedList<>();
-        MusicShuffler.dirtyFileNames = new ArrayDeque<>();
+        MusicShuffler.fileNamesWithoutShufflePrefix = new LinkedList<>();
+        MusicShuffler.shuffledFileNames = new ArrayDeque<>();
         MusicShuffler.shuffle = new Stack<>();
     }
 
@@ -91,12 +91,11 @@ public class MusicShufflerTest {
         newFileNames.retainAll(fileNames);
 
         newFileNames.forEach(fileName -> {
-                    String nameWithoutPrefix = stripPrefix(fileName);
-                    long oldFileModTime = oldModificationTimes.get(nameWithoutPrefix);
-                    long newFileModTime = newModificationTimes.get(nameWithoutPrefix);
-                    assertTrue(oldFileModTime < newFileModTime);
-                }
-        );
+            String nameWithoutPrefix = stripPrefix(fileName);
+            long oldFileModTime = oldModificationTimes.get(nameWithoutPrefix);
+            long newFileModTime = newModificationTimes.get(nameWithoutPrefix);
+            assertTrue(oldFileModTime < newFileModTime);
+        });
     }
 
     @Test
@@ -109,7 +108,9 @@ public class MusicShufflerTest {
 
             List<String> newSubFolderFileNames = getFileNamesForFilesInSubfolder(pathToSubFolder);
             subFolderFileNames.removeAll(newSubFolderFileNames);
-            assertEquals(subFolderFileNames.size(), 0);
+
+            int expectedSize = 0;
+            assertEquals(subFolderFileNames.size(), expectedSize);
         } catch (IOException e) {
             assertTrue("IOException occurred!", false);
         }
@@ -150,7 +151,8 @@ public class MusicShufflerTest {
     }
 
     private List<String> getFileNamesForFilesInSubfolder(Path pathToSubFolder) throws IOException {
-        return Files.walk(pathToSubFolder, 1)
+        int subFolderDepth = 1;
+        return Files.walk(pathToSubFolder, subFolderDepth)
                 .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                 .map(path -> path.getFileName().toString())
                 .collect(Collectors.toList());
