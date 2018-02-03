@@ -19,8 +19,8 @@ import java.util.stream.IntStream;
  */
 public class MusicShuffler {
 
-    static List<String> cleaned = new LinkedList<>();
-    static Queue<Path> dirtyFileNames = new ArrayDeque<>();
+    static List<String> fileNamesWithoutShufflePrefix = new LinkedList<>();
+    static Queue<Path> shuffledFileNames = new ArrayDeque<>();
     static Stack<Integer> shuffle = new Stack<>();
 
     public static void main(String[] args) {
@@ -28,11 +28,11 @@ public class MusicShuffler {
         System.out.println("Provided path: " + folderWithMusic.toAbsolutePath());
 
         checkIfMusicWasAlreadyShuffled(folderWithMusic);
-        initializeShuffle(cleaned.size());
+        initializeShuffle(fileNamesWithoutShufflePrefix.size());
 
-        cleaned.forEach(fileName -> {
+        fileNamesWithoutShufflePrefix.forEach(fileName -> {
             String newFileName = folderWithMusic.toString() + "\\" + shuffle.pop() + "." + fileName;
-            File file = dirtyFileNames.poll().toFile();
+            File file = shuffledFileNames.poll().toFile();
             file.setLastModified(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
             file.renameTo(new File(newFileName));
         });
@@ -65,8 +65,8 @@ public class MusicShuffler {
             Pattern pattern = Pattern.compile("^([0-9]+\\.)+");
 
             dirty.forEach(data -> {
-                cleaned.add(pattern.matcher(data.getFileName().toString()).replaceFirst(""));
-                dirtyFileNames.add(data);
+                fileNamesWithoutShufflePrefix.add(pattern.matcher(data.getFileName().toString()).replaceFirst(""));
+                shuffledFileNames.add(data);
             });
         } catch (IOException e) {
             e.printStackTrace();
