@@ -42,7 +42,9 @@ public class MusicShuffler {
 
     private static Path checkForCommandLinePath(String[] args) throws IllegalArgumentException {
         if (args.length == 1) {
-            return new File(args[0]).toPath();
+            File file = new File(args[0]);
+            if (file.isDirectory())
+                return file.toPath();
         }
 
         throw new IllegalArgumentException("Please provide path to folder with your music!");
