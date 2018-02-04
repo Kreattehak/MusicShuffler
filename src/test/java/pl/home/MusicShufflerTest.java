@@ -2,7 +2,9 @@ package pl.home;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -29,6 +31,9 @@ public class MusicShufflerTest {
     public static List<Object[]> data() {
         return Arrays.asList(new Object[50][0]);
     }
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
 
     @Before
     public void setUp() throws Exception {
@@ -114,6 +119,20 @@ public class MusicShufflerTest {
         } catch (IOException e) {
             assertTrue("IOException occurred!", false);
         }
+    }
+
+    @Test
+    public void shouldExitAfterPathWasNotFound() {
+        expectedException.expect(IllegalArgumentException.class);
+        expectedException.expectMessage("provide path");
+        MusicShuffler.main(new String[]{"C:\\test\\test\\test"});
+    }
+
+    @Test
+    public void shouldExitAfterUserPassMoreThanOneCommandLineArgument() {
+        expectedException.expect(IllegalArgumentException.class);
+        expectedException.expectMessage("provide path");
+        MusicShuffler.main(new String[]{"C:\\test", "test"});
     }
 
     private List<String> getFileNames() {
