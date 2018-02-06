@@ -1,6 +1,5 @@
 package pl.home;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,10 +21,13 @@ import static org.junit.Assert.assertTrue;
 public class MusicShufflerTest {
 
     private Path pathToTestFolder = Paths.get("src/test/resources/Music/");
+    private String nonResolvablePathToFolder = "C:\\test\\test\\test";
     private String[] locationOfTestFolder = new String[]{pathToTestFolder.toAbsolutePath().toString()};
     private Pattern pattern = Pattern.compile("^([0-9]+\\.)+");
     private List<String> fileNames;
     private int fileCount;
+
+    private MusicShuffler musicShuffler;
 
     @Parameterized.Parameters // Just to be sure that file names aren't mixed-up
     public static List<Object[]> data() {
@@ -39,18 +41,12 @@ public class MusicShufflerTest {
     public void setUp() throws Exception {
         fileNames = getFileNames();
         fileCount = getFileCount();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        MusicShuffler.fileNamesWithoutShufflePrefix = new LinkedList<>();
-        MusicShuffler.shuffledFileNames = new ArrayDeque<>();
-        MusicShuffler.shuffle = new Stack<>();
+        musicShuffler = new MusicShuffler();
     }
 
     @Test
     public void shouldNotChangeTheCountOfFiles() {
-        MusicShuffler.main(locationOfTestFolder);
+        musicShuffler.shuffle(locationOfTestFolder);
 
         assertEquals(fileCount, getFileNames().size());
     }
@@ -59,7 +55,7 @@ public class MusicShufflerTest {
     public void fileShouldNotBeRenamedWithOtherFileName() {
         Map<String, Long> oldFilesLength = getFilesLength();
 
-        MusicShuffler.main(locationOfTestFolder);
+        musicShuffler.shuffle(locationOfTestFolder);
 
         Map<String, Long> newFilesLength = getFilesLength();
 
@@ -71,7 +67,7 @@ public class MusicShufflerTest {
 
     @Test
     public void shouldAddRandomShufflePrefixToFileName() {
-        MusicShuffler.main(locationOfTestFolder);
+        musicShuffler.shuffle(locationOfTestFolder);
 
         List<String> newFileNames = getFileNames();
         newFileNames.removeAll(fileNames); // remove file names with the same shuffle number
@@ -88,7 +84,7 @@ public class MusicShufflerTest {
     public void filesShouldBeRenamed() {
         Map<String, Long> oldModificationTimes = getFilesModificationTime();
 
-        MusicShuffler.main(locationOfTestFolder);
+        musicShuffler.shuffle(locationOfTestFolder);
 
         Map<String, Long> newModificationTimes = getFilesModificationTime();
 
@@ -109,7 +105,7 @@ public class MusicShufflerTest {
         try {
             List<String> subFolderFileNames = getFileNamesForFilesInSubfolder(pathToSubFolder);
 
-            MusicShuffler.main(locationOfTestFolder);
+            musicShuffler.shuffle(locationOfTestFolder);
 
             List<String> newSubFolderFileNames = getFileNamesForFilesInSubfolder(pathToSubFolder);
             subFolderFileNames.removeAll(newSubFolderFileNames);
@@ -124,15 +120,15 @@ public class MusicShufflerTest {
     @Test
     public void shouldExitAfterPathWasNotFound() {
         expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("provide path");
-        MusicShuffler.main(new String[]{"C:\\test\\test\\test"});
+        expectedException.expectMessage("provide a proper path");
+        musicShuffler.shuffle(new String[]{nonResolvablePathToFolder});
     }
 
     @Test
     public void shouldExitAfterUserPassMoreThanOneCommandLineArgument() {
         expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("provide path");
-        MusicShuffler.main(new String[]{"C:\\test", "test"});
+        expectedException.expectMessage("provide only one");
+        musicShuffler.shuffle(new String[]{nonResolvablePathToFolder, "test"});
     }
 
     private List<String> getFileNames() {
