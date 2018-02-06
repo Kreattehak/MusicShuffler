@@ -72,7 +72,7 @@ public class MusicShufflerTest {
         List<String> newFileNames = getFileNames();
         newFileNames.removeAll(fileNames); // remove file names with the same shuffle number
 
-        boolean areFilesShuffledByPrefix = false;
+        boolean areFilesShuffledByPrefix = newFileNames.isEmpty();
         for (String fileName : newFileNames) {
             areFilesShuffledByPrefix = pattern.matcher(fileName).find();
         }
