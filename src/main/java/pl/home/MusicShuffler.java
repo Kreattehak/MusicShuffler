@@ -7,69 +7,78 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.ArrayDeque;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
-/**
- * Remember to provide path to folder with music as command line argument!
- * RadioMixer was tested only on Windows
- * File names can't begin with a number, all music files must be in specified folder, no subfolders allowed
- */
 public class MusicShuffler {
+    private List<String> fileNamesWithoutShufflePrefix = new LinkedList<>();
+    private Queue<Path> shuffledFileNames = new ArrayDeque<>();
+    private Path folderWithMusic;
 
-    static List<String> fileNamesWithoutShufflePrefix = new LinkedList<>();
-    static Queue<Path> shuffledFileNames = new ArrayDeque<>();
-    static Stack<Integer> shuffle = new Stack<>();
+    private FileNameCleaner fileNameCleaner;
+    private PrefixShuffler prefixShuffler;
 
-    public static void main(String[] args) {
-        Path folderWithMusic = checkForCommandLinePath(args);
+    MusicShuffler() {
+        this.fileNameCleaner = new FileNameCleaner();
+        this.prefixShuffler = new PrefixShuffler();
+    }
+
+    void shuffle(String[] args) {
+        checkIfUserInputIsCorrect(args);
         System.out.println("Provided path: " + folderWithMusic.toAbsolutePath());
 
-        checkIfMusicWasAlreadyShuffled(folderWithMusic);
-        initializeShuffle(fileNamesWithoutShufflePrefix.size());
+        cleanNamesAndInitializeShuffle();
+        shuffleFileNames();
+        System.out.println("Files shuffled successfully.");
+    }
 
+    private void checkIfUserInputIsCorrect(String[] args) throws IllegalArgumentException {
+        if (inputOnlyContainsOneArgument(args)) {
+            checkIfGivenPathLeadsToAFolder(args[0]);
+        } else {
+            throw new IllegalArgumentException("Please provide only one cmd arg" +
+                    " which is a path to folder with your music!");
+        }
+    }
+
+    private boolean inputOnlyContainsOneArgument(String[] args) {
+        return args.length == 1;
+    }
+
+    private void checkIfGivenPathLeadsToAFolder(String path) throws IllegalArgumentException {
+        File file = new File(path);
+        if (file.isDirectory()) {
+            folderWithMusic = file.toPath();
+            return;
+        }
+        throw new IllegalArgumentException("Please provide a proper path to folder with your music!");
+    }
+
+    private void cleanNamesAndInitializeShuffle() {
+        checkIfMusicWasAlreadyShuffled(folderWithMusic);
+        prefixShuffler.initializeShuffle(fileNamesWithoutShufflePrefix.size());
+    }
+
+    private void shuffleFileNames() {
         fileNamesWithoutShufflePrefix.forEach(fileName -> {
-            String newFileName = folderWithMusic.toString() + "\\" + shuffle.pop() + "." + fileName;
+            String newFileName = folderWithMusic.toString() + "\\" + prefixShuffler.getShuffle() + "." + fileName;
             File file = shuffledFileNames.poll().toFile();
             file.setLastModified(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
             file.renameTo(new File(newFileName));
         });
-
-        System.out.println("Files shuffled successfully.");
     }
 
-    private static Path checkForCommandLinePath(String[] args) throws IllegalArgumentException {
-        if (args.length == 1) {
-            File file = new File(args[0]);
-            if (file.isDirectory())
-                return file.toPath();
-        }
-
-        throw new IllegalArgumentException("Please provide path to folder with your music!");
-    }
-
-    private static void initializeShuffle(int fileCount) {
-        List<Integer> rangeOfNumbers = IntStream.range(1, fileCount + 1)
-                .boxed()
-                .collect(Collectors.toList());
-        Collections.shuffle(rangeOfNumbers);
-        rangeOfNumbers.forEach(shuffle::push);
-    }
-
-    private static void checkIfMusicWasAlreadyShuffled(Path folder) {
+    private void checkIfMusicWasAlreadyShuffled(Path folder) {
         try {
             List<Path> dirty = Files.walk(folder, 1)
                     .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
                     .collect(Collectors.toList());
 
-            Pattern pattern = Pattern.compile("^([0-9]+\\.)+");
-
-            dirty.forEach(data -> {
-                fileNamesWithoutShufflePrefix.add(pattern.matcher(data.getFileName().toString()).replaceFirst(""));
-                shuffledFileNames.add(data);
-            });
+            dirty.forEach(data -> fileNameCleaner.cleanAndGetFileNames(data,
+                    fileNamesWithoutShufflePrefix, shuffledFileNames));
         } catch (IOException e) {
             e.printStackTrace();
         }
